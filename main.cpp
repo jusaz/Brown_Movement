@@ -1,11 +1,10 @@
 /*********************************************************
  *                                                       *
- *      gtk3 - Cairo: Rectangulo e círculo a             *
- *             moverem-se numa janela                    *
+ *      gtk3 - Cairo: Movimento Brownianio               *
  *                                                       *
  *      GTK+ 3                                           *
  *      Versao: 1.0                                      *
- *      Samuel Eleuterio 2015                            *
+ *      Pedro Moura  2016                                *
  *                                                       *
  *********************************************************/
 
@@ -22,6 +21,6 @@ glong   win_ylen    = 600 ;
 
 int main(int argc, char *argv[])
 {
-
+  //comment
 }
 
