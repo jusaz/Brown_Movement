@@ -44,7 +44,7 @@ gboolean
 cb_options (GtkWidget *widget ,
             GtkWidget *win    )
 {
-  GtkWidget    *op_win, *button1, *vbox, *hbox1 ;
+  GtkWidget    *op_win, *button1, *vbox, *hbox1, *label ;
 
   glong   xy_len    = 400 ;
 
@@ -58,8 +58,16 @@ cb_options (GtkWidget *widget ,
   gtk_container_set_border_width (GTK_CONTAINER (vbox), 10);
   gtk_container_add (GTK_CONTAINER (op_win), vbox);
 
+  label = gtk_label_new("Bola Grande:");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, TRUE, 3);
+
+  label = gtk_label_new("Bolas Pequenas:");
+  gtk_widget_set_halign(label, GTK_ALIGN_START);
+  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, TRUE, 3);
+
   hbox1 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_end (GTK_BOX(vbox), hbox1, FALSE, TRUE, 3);
+  gtk_box_pack_end (GTK_BOX(vbox), hbox1, FALSE, TRUE, 0);
 
   button1 = gtk_button_new_with_label ("Cancel");
   gtk_widget_set_size_request (button1, 100, 20);
