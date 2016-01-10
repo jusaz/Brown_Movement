@@ -17,12 +17,33 @@
 const gchar  *winTitle    = "Movimento Browniano" ;
 glong   win_xlen    = 800 ;
 glong   win_ylen    = 600 ;
+gint    flag_sc     = 0   ;
 
+gboolean
+cb_stop_continue (GtkWidget  *widget ,
+                  gpointer    data   )
+{
+  if (flag_sc)
+    gtk_button_set_label (GTK_BUTTON(widget), "Parar");
+  else
+    gtk_button_set_label (GTK_BUTTON(widget), "Continuar");
+
+  flag_sc = (flag_sc + 1) % 2;
+
+  return FALSE;
+}
+
+gboolean
+cb_restart (GtkWidget *widget ,
+            gpointer   data   )
+{
+  return false;
+}
 
 int main(int argc, char *argv[])
 {
   //criar a janela
-  GtkWidget *window, *draw_area, *frame, *main_box;
+  GtkWidget *window, *draw_area, *frame, *main_box, *button_box, *button;
 
   gtk_init (&argc, &argv);
 
@@ -46,6 +67,20 @@ int main(int argc, char *argv[])
   frame = gtk_frame_new (" Configuração ");
   gtk_frame_set_label_align (GTK_FRAME(frame), 0.5, 0.5);
   gtk_box_pack_start (GTK_BOX(main_box), frame, FALSE, TRUE, 3);
+
+  button_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_set_border_width (GTK_CONTAINER (button_box), 10);
+  gtk_container_add (GTK_CONTAINER (frame), button_box);
+
+  button = gtk_button_new_with_label ("Reiniciar");
+  gtk_widget_set_size_request (button, 170, 20);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(cb_restart), NULL);
+  gtk_box_pack_end (GTK_BOX(button_box), button, FALSE, TRUE, 3);
+
+  button = gtk_button_new_with_label ("Parar");
+  gtk_widget_set_size_request (button, 170, 20);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(cb_stop_continue), NULL);
+  gtk_box_pack_end (GTK_BOX(button_box), button, FALSE, TRUE, 3);
 
   g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
