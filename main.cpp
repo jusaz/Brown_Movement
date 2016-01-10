@@ -40,6 +40,42 @@ cb_restart (GtkWidget *widget ,
   return false;
 }
 
+gboolean
+cb_options (GtkWidget *widget ,
+            GtkWidget *win    )
+{
+  GtkWidget    *op_win, *button1, *vbox, *hbox1 ;
+
+  glong   xy_len    = 400 ;
+
+  op_win = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_position (GTK_WINDOW(op_win), GTK_WIN_POS_CENTER);
+  gtk_widget_set_size_request (op_win, xy_len, xy_len);
+  gtk_window_set_title (GTK_WINDOW (op_win), "Opcões");
+  g_signal_connect (G_OBJECT(op_win), "destroy", G_CALLBACK(gtk_widget_destroy), op_win);
+
+  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_set_border_width (GTK_CONTAINER (vbox), 10);
+  gtk_container_add (GTK_CONTAINER (op_win), vbox);
+
+  hbox1 = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_end (GTK_BOX(vbox), hbox1, FALSE, TRUE, 3);
+
+  button1 = gtk_button_new_with_label ("Cancel");
+  gtk_widget_set_size_request (button1, 100, 20);
+  gtk_box_pack_end (GTK_BOX(hbox1), button1, FALSE, TRUE, 3);
+  g_signal_connect (G_OBJECT(button1), "clicked", G_CALLBACK(gtk_widget_destroy), op_win);
+
+  button1 = gtk_button_new_with_label ("Ok");
+  gtk_widget_set_size_request (button1, 100, 20);
+  gtk_box_pack_end (GTK_BOX(hbox1), button1, FALSE, TRUE, 3);
+  g_signal_connect (G_OBJECT(button1), "clicked", G_CALLBACK(gtk_widget_destroy), op_win);
+
+  gtk_widget_show_all (op_win);
+
+  return FALSE;
+}
+
 int main(int argc, char *argv[])
 {
   //criar a janela
@@ -87,6 +123,12 @@ int main(int argc, char *argv[])
   button = gtk_button_new_with_label ("Parar");
   gtk_widget_set_size_request (button, 170, 20);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(cb_stop_continue), NULL);
+  gtk_box_pack_end (GTK_BOX(button_box), button, FALSE, TRUE, 3);
+
+  //criação do botão Opcões
+  button = gtk_button_new_with_label ("Opções");
+  gtk_widget_set_size_request (button, 170, 20);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(cb_options), NULL);
   gtk_box_pack_end (GTK_BOX(button_box), button, FALSE, TRUE, 3);
 
   g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
