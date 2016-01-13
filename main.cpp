@@ -44,43 +44,72 @@ gboolean
 cb_options_clicked (GtkWidget *widget ,
                     GtkWidget *win    )
 {
-  GtkWidget    *op_win, *vbox, *label ;
+  GtkWidget    *op_win, *vbox, *table, *label, *user, *real, *home, *host;
+  GtkWidget    *lbl1, *lbl2, *lbl3, *lbl4;
+  gint result;
 
   glong   xy_len    = 400 ;
 
   GtkDialogFlags flags = GtkDialogFlags(GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT);
 
   op_win = gtk_dialog_new_with_buttons("Opções",
-                                       GTK_WINDOW(widget),
+                                       GTK_WINDOW(win),
                                        flags,
                                        GTK_STOCK_OK,
-                                       GTK_RESPONSE_ACCEPT,
+                                       GTK_RESPONSE_OK,
                                        GTK_STOCK_CANCEL,
                                        GTK_RESPONSE_REJECT,
                                        NULL);
 
-  gtk_window_set_position (GTK_WINDOW(op_win), GTK_WIN_POS_CENTER);
   gtk_widget_set_size_request (op_win, xy_len, xy_len);
-  gtk_window_set_title (GTK_WINDOW (op_win), "Opcões");
-  g_signal_connect (G_OBJECT(op_win), "destroy", G_CALLBACK(gtk_widget_destroy), op_win);
+  //g_signal_connect (G_OBJECT(op_win), "destroy", G_CALLBACK(gtk_widget_destroy), op_win);
+
+  /* Create four entries that will tell the user what data to enter. */
+  lbl1 = gtk_label_new ("User Name:");
+  lbl2 = gtk_label_new ("Real Name:");
+  lbl3 = gtk_label_new ("Home Dir:");
+  lbl4 = gtk_label_new ("Host Name:");
+  user = gtk_entry_new();
+  real = gtk_entry_new();
+  home = gtk_entry_new();
+  host = gtk_entry_new();
+
+  /* Retrieve the user's information for the default values. */
+  gtk_entry_set_text (GTK_ENTRY (user), g_get_user_name());
+  gtk_entry_set_text (GTK_ENTRY (real), g_get_real_name());
+  gtk_entry_set_text (GTK_ENTRY (home), g_get_home_dir());
+  gtk_entry_set_text (GTK_ENTRY (host), g_get_host_name());
 
 
-  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_set_border_width (GTK_CONTAINER (vbox), 10);
-  gtk_container_add (GTK_CONTAINER (op_win), vbox);
+  table = gtk_table_new(4, 2, FALSE);
+  gtk_table_attach_defaults(GTK_TABLE(table), lbl1, 0, 1, 0, 1);
+  gtk_table_attach_defaults(GTK_TABLE(table), lbl2, 0, 1, 1, 2);
+  gtk_table_attach_defaults(GTK_TABLE(table), lbl3, 0, 1, 2, 3);
+  gtk_table_attach_defaults(GTK_TABLE(table), lbl4, 0, 1, 3, 4);
 
-  label = gtk_label_new("Bola Grande:");
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, TRUE, 3);
+  gtk_table_attach_defaults(GTK_TABLE(table), user, 1, 2, 0, 1);
+  gtk_table_attach_defaults(GTK_TABLE(table), real, 1, 2, 1, 2);
+  gtk_table_attach_defaults(GTK_TABLE(table), home, 1, 2, 2, 3);
+  gtk_table_attach_defaults(GTK_TABLE(table), host, 1, 2, 3, 4);
 
-  label = gtk_label_new("Bolas Pequenas:");
-  gtk_widget_set_halign(label, GTK_ALIGN_START);
-  gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, TRUE, 3);
+  gtk_table_set_row_spacings(GTK_TABLE (table), 5);
+  gtk_table_set_col_spacings(GTK_TABLE (table), 5);
+  gtk_container_set_border_width(GTK_CONTAINER (table), 5);
 
-  gtk_widget_show_all (op_win);
+  vbox = gtk_dialog_get_content_area(GTK_DIALOG(op_win));
+  gtk_container_add (GTK_CONTAINER (vbox), table);
 
-  /* Create the dialog as modal and destroy it when a button is clicked. */
-  gtk_dialog_run (GTK_DIALOG (op_win));
+  /* Run the dialog and output the data if the user clicks the OK button. */
+  result = gtk_dialog_run (GTK_DIALOG (op_win));
+
+  if (result == GTK_RESPONSE_OK)
+  {
+    g_print ("User Name: %s\n", gtk_entry_get_text (GTK_ENTRY (user)));
+    g_print ("Real Name: %s\n", gtk_entry_get_text (GTK_ENTRY (real)));
+    g_print ("Home Folder: %s\n", gtk_entry_get_text (GTK_ENTRY (home)));
+    g_print ("Host Name: %s\n", gtk_entry_get_text (GTK_ENTRY (host)));
+  }
+
   gtk_widget_destroy (op_win);
 
   return FALSE;
