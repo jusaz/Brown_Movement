@@ -62,7 +62,7 @@ cb_options_clicked (GtkWidget *widget ,
                                        NULL);
 
   gtk_widget_set_size_request (op_win, xy_len, xy_len);
-  //g_signal_connect (G_OBJECT(op_win), "destroy", G_CALLBACK(gtk_widget_destroy), op_win);
+  g_signal_connect (G_OBJECT(op_win), "destroy", G_CALLBACK(gtk_widget_destroy), op_win);
 
   /* Create four entries that will tell the user what data to enter. */
   lbl1 = gtk_label_new ("User Name:");
@@ -98,6 +98,8 @@ cb_options_clicked (GtkWidget *widget ,
 
   vbox = gtk_dialog_get_content_area(GTK_DIALOG(op_win));
   gtk_container_add (GTK_CONTAINER (vbox), table);
+
+  gtk_widget_show_all(op_win);
 
   /* Run the dialog and output the data if the user clicks the OK button. */
   result = gtk_dialog_run (GTK_DIALOG (op_win));
