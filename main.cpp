@@ -17,7 +17,7 @@
 const gchar  *winTitle    = "Movimento Browniano" ;
 glong   win_xlen    = 800 ;
 glong   win_ylen    = 600 ;
-gint    flag_sc     = 0   ;
+gint    flag_sc     = 1   ;
 
 gboolean
 cb_stop_continue (GtkButton  *widget ,
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
   gtk_box_pack_end (GTK_BOX(button_box), button, FALSE, TRUE, 3);
 
   //criação do botão parar
-  button = gtk_button_new_with_label ("Parar");
+  button = gtk_button_new_with_label ("Iniciar");
   gtk_widget_set_size_request (button, 170, 20);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(cb_stop_continue), NULL);
   gtk_box_pack_end (GTK_BOX(button_box), button, FALSE, TRUE, 3);
