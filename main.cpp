@@ -29,6 +29,7 @@
 #include <cairo.h>
 #include <gtk/gtk.h>
 #include <math.h>
+#include <time.h>
 
 const gchar  *winTitle    = "Movimento Browniano" ;
 glong   win_xlen    = 800 ;
@@ -89,7 +90,7 @@ gboolean
 cb_restart (GtkWidget *widget ,
             gpointer   data   )
 {
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -99,7 +100,7 @@ cb_sb_bg_massa (GtkWidget *widget ,
   config_bg *bg = (config_bg*)data;
   bg->bg_massa = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bg massa: %d\n", ((config_bg*)data)->bg_massa);
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -109,7 +110,7 @@ cb_sb_bg_velocidade (GtkWidget *widget ,
   config_bg *bg = (config_bg*)data;
   bg->bg_velocidade = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bg velocidade: %d\n", ((config_bg*)data)->bg_velocidade);
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -119,7 +120,7 @@ cb_chkb_bg_ver_sozinha (GtkWidget *widget ,
   config_bg *bg = (config_bg*)data;
   bg->bg_ver_sozinha = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   g_print("bg ver sozinha: %d\n", ((config_bg*)data)->bg_ver_sozinha ? 1 : 0);
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -129,7 +130,7 @@ cb_chkb_bg_ver_velocidade (GtkWidget *widget ,
   config_bg *bg = (config_bg*)data;
   bg->bg_ver_velocidade = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   g_print("bg ver velocidade: %d\n", ((config_bg*)data)->bg_ver_velocidade ? 1 : 0);
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -139,7 +140,7 @@ cb_sb_bp_massa (GtkWidget *widget ,
   config_bp *bp = (config_bp*)data;
   bp->bp_massa = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp massa: %d\n", ((config_bp*)data)->bp_massa);
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -149,7 +150,7 @@ cb_sb_bp_num_bolas (GtkWidget *widget ,
   config_bp *bp = (config_bp*)data;
   bp->bp_num_bolas = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp num bolas: %d\n", ((config_bp*)data)->bp_num_bolas);
-  return false;
+  return FALSE;
 }
 
 gboolean
@@ -159,19 +160,27 @@ cb_sb_bp_velocidade (GtkWidget *widget ,
   config_bp *bp = (config_bp*)data;
   bp->bp_velocidade = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp velocidade: %d\n", ((config_bp*)data)->bp_velocidade);
-  return false;
+  return FALSE;
 }
+
+void actualizar(const Components* ptr)
+{
+
+}
+
+
 
 gboolean
 cb_draw_event (GtkWidget  *darea ,
                cairo_t    *cr    ,
                gpointer    data  )
 {
+
   gchar          texto[128] ;
   GtkAllocation  alloc1 ;
   int i;
 
-  Components *myComponents = static_cast<Components*>(data);
+  Components *myComponents = (Components*)data;
 
   gtk_widget_get_allocation (darea, &alloc1);
 
@@ -239,8 +248,13 @@ cb_draw_event (GtkWidget  *darea ,
 
   cairo_stroke(cr);
 
-  //for()
+  //for() */
 
+  /* Para cada bola vamos :*/
+  /* Fazer o update das posições */
+  /* fazer o rendering na drawing area */
+  /* verificar se existem colisões com as bordas da drawing area */
+  /* verificar se existem colisões entre as bolas peuqenas com a grande*/
 
   return FALSE;
 }
@@ -262,13 +276,10 @@ int main(int argc, char *argv[])
 
   GtkWidget *label, *spin_button, *check_box;
 
-  config_bg bg_param;
-  config_bp bp_param;
-
   int i;
 
-  bg_param = {(guint8)BG_MASSA_DFT, (guint8)BG_VEL_DFT, false, false};
-  bp_param = {(guint8)BP_MASSA_DFT, (guint8)BP_VEL_DFT, (guint8)BP_NUM_BOLAS_DFT};
+  config_bg bg_param = {(guint8)BG_MASSA_DFT, (guint8)BG_VEL_DFT, FALSE, FALSE};
+  config_bp bp_param = {(guint8)BP_MASSA_DFT, (guint8)BP_VEL_DFT, (guint8)BP_NUM_BOLAS_DFT};
 
   const gdouble radius = 10;
 
