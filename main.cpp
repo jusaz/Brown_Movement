@@ -14,6 +14,16 @@
 #define BP_MASSA_DFT      5
 #define BP_VEL_DFT        5
 
+#define BALL0_X  200
+#define BALL0_Y  30
+
+#define BALL1_X  500
+#define BALL1_Y  30
+
+#define DFLT_NR_SMALL_BALLS   5
+#define MAX_NR_SMALL_BALLS    5
+#define DFLT_MASS_SMALL_BALLS 2.
+
 #include <stdlib.h>
 #include <string.h>
 #include <cairo.h>
@@ -24,6 +34,27 @@ const gchar  *winTitle    = "Movimento Browniano" ;
 glong   win_xlen    = 800 ;
 glong   win_ylen    = 600 ;
 gint    flag_sc     = 1   ;
+
+glong   xlen        = 450 ;
+glong   ylen        = 200 ;
+gdouble dt          = 1.  ;
+gdouble dt_max      = 10. ;
+
+typedef struct Ball_
+{
+  gdouble diam;
+  gdouble xPos;
+  gdouble yPos;
+  gdouble s2x;
+  gdouble s2y;
+  gdouble massa;
+}Ball;
+
+typedef struct Components_
+{
+  Ball* bigBall;
+  Ball* smallBall;
+}Components;
 
 typedef struct _config_bg
 {
@@ -63,7 +94,7 @@ cb_restart (GtkWidget *widget ,
 
 gboolean
 cb_sb_bg_massa (GtkWidget *widget ,
-             gpointer   data   )
+                gpointer   data   )
 {
   config_bg *bg = (config_bg*)data;
   bg->bg_massa = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
@@ -73,7 +104,7 @@ cb_sb_bg_massa (GtkWidget *widget ,
 
 gboolean
 cb_sb_bg_velocidade (GtkWidget *widget ,
-                  gpointer   data   )
+                     gpointer   data   )
 {
   config_bg *bg = (config_bg*)data;
   bg->bg_velocidade = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
@@ -103,7 +134,7 @@ cb_chkb_bg_ver_velocidade (GtkWidget *widget ,
 
 gboolean
 cb_sb_bp_massa (GtkWidget *widget ,
-             gpointer   data   )
+                gpointer   data   )
 {
   config_bp *bp = (config_bp*)data;
   bp->bp_massa = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
@@ -113,7 +144,7 @@ cb_sb_bp_massa (GtkWidget *widget ,
 
 gboolean
 cb_sb_bp_num_bolas (GtkWidget *widget ,
-                 gpointer   data   )
+                    gpointer   data   )
 {
   config_bp *bp = (config_bp*)data;
   bp->bp_num_bolas = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
@@ -123,12 +154,105 @@ cb_sb_bp_num_bolas (GtkWidget *widget ,
 
 gboolean
 cb_sb_bp_velocidade (GtkWidget *widget ,
-                  gpointer   data   )
+                     gpointer   data   )
 {
   config_bp *bp = (config_bp*)data;
   bp->bp_velocidade = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp velocidade: %d\n", ((config_bp*)data)->bp_velocidade);
   return false;
+}
+
+gboolean
+cb_draw_event (GtkWidget  *darea ,
+               cairo_t    *cr    ,
+               gpointer    data  )
+{
+  gchar          texto[128] ;
+  GtkAllocation  alloc1 ;
+  int i;
+
+  Components *myComponents = static_cast<Components*>(data);
+
+  gtk_widget_get_allocation (darea, &alloc1);
+
+  cairo_move_to (cr, 20, 20);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size (cr, 18);
+  cairo_set_source_rgb (cr, 0., 0., 1.);
+  sprintf (texto, "Exemplo de funcionamento de GTK+ Cairo            Velocidade: %.0lf", dt);
+  cairo_show_text (cr, texto);
+  cairo_stroke (cr);
+
+  // Small Balls
+  for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
+    {
+      cairo_set_source_rgb (cr, 1., 0., 0.);
+      cairo_set_line_width (cr, 4.0);
+      cairo_arc (cr, myComponents->smallBall[i].xPos, myComponents->smallBall[i].yPos,
+                 myComponents->smallBall[i].diam, 0, 2. * M_PI);
+      cairo_stroke_preserve (cr);
+
+      // Nota: ver o que acontece se se comentar a linha anterior e descomentar a seguinte
+      //cairo_stroke (cr);
+
+      cairo_set_source_rgb (cr, 0, 0, 1);
+      cairo_fill (cr);
+
+      if ((myComponents->smallBall[i].xPos < myComponents->smallBall[i].diam + 10) ||
+          ((myComponents->smallBall[i].xPos + myComponents->smallBall[i].diam + 10) > alloc1.width))
+        myComponents->smallBall[i].s2x = - myComponents->smallBall[i].s2x;
+      myComponents->smallBall[i].xPos = myComponents->smallBall[i].xPos + myComponents->smallBall[i].s2x * dt;
+
+      if ((myComponents->smallBall[i].yPos < myComponents->smallBall[i].diam + 10) ||
+          ((myComponents->smallBall[i].yPos + myComponents->smallBall[i].diam + 10) > alloc1.height))
+        myComponents->smallBall[i].s2y = - myComponents->smallBall[i].s2y;
+      myComponents->smallBall[i].yPos = myComponents->smallBall[i].yPos + myComponents->smallBall[i].s2y * dt;
+
+      cairo_stroke(cr);
+    }
+
+  //Big Ball
+  cairo_set_source_rgb (cr, 1., 0., 0.);
+  cairo_set_line_width (cr, 4.0);
+  cairo_arc (cr, myComponents->bigBall->xPos, myComponents->bigBall->yPos,
+             myComponents->bigBall->diam, 0, 2. * M_PI);
+  cairo_stroke_preserve (cr);
+
+  // Nota: ver o que acontece se se comentar a linha anterior e descomentar a seguinte
+  //cairo_stroke (cr);
+
+  cairo_set_source_rgb (cr, 0, 0, 1);
+  cairo_fill (cr);
+
+  if (
+      (myComponents->bigBall->xPos < myComponents->bigBall->diam) ||
+      ((myComponents->bigBall->xPos + myComponents->bigBall->diam) > alloc1.width)
+     )
+    myComponents->bigBall->s2x = - myComponents->bigBall->s2x;
+
+  myComponents->bigBall->xPos = myComponents->bigBall->xPos + myComponents->bigBall->s2x * dt;
+
+  if ((myComponents->bigBall->yPos < myComponents->bigBall->diam) ||
+      ((myComponents->bigBall->yPos + myComponents->bigBall->diam) > alloc1.height))
+    myComponents->bigBall->s2y = - myComponents->bigBall->s2y;
+  myComponents->bigBall->yPos = myComponents->bigBall->yPos + myComponents->bigBall->s2y * dt;
+
+  cairo_stroke(cr);
+
+  //for()
+
+
+  return FALSE;
+}
+
+gboolean time_handler (GtkWidget *widget)
+{
+  if (!gtk_widget_get_window (widget))
+    return FALSE;
+
+  gtk_widget_queue_draw(widget);
+
+  return TRUE;
 }
 
 int main(int argc, char *argv[])
@@ -141,8 +265,41 @@ int main(int argc, char *argv[])
   config_bg bg_param;
   config_bp bp_param;
 
+  int i;
+
   bg_param = {(guint8)BG_MASSA_DFT, (guint8)BG_VEL_DFT, false, false};
   bp_param = {(guint8)BP_MASSA_DFT, (guint8)BP_VEL_DFT, (guint8)BP_NUM_BOLAS_DFT};
+
+  const gdouble radius = 10;
+
+  //Create init Small Ball Array
+  Ball *vSmallBall = (Ball*)malloc(MAX_NR_SMALL_BALLS * sizeof(Ball));
+
+  srand ((unsigned) time (NULL));
+
+  for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
+    {
+      vSmallBall[i].diam  = radius;
+      vSmallBall[i].xPos  = rand () % win_xlen + 1;
+      vSmallBall[i].yPos  = rand () % win_ylen + 1;
+      vSmallBall[i].s2x   =   -1.;
+      vSmallBall[i].s2y   =    1.;
+      vSmallBall[i].massa =  DFLT_MASS_SMALL_BALLS;
+    }
+
+  //create Big Ball
+  Ball* theBigBall = (Ball*)malloc(sizeof(Ball));
+  theBigBall->diam  = 2 * radius;
+  theBigBall->xPos  = rand () % win_xlen + 1;
+  theBigBall->yPos  = rand () % win_ylen + 1;
+  theBigBall->s2x   =   1.;
+  theBigBall->s2y   =   1.;
+  theBigBall->massa =  3 * DFLT_MASS_SMALL_BALLS;
+
+  Components* myComponents = (Components*)malloc(sizeof(Components));
+
+  myComponents->bigBall = theBigBall;
+  myComponents->smallBall = vSmallBall;
 
   gtk_init (&argc, &argv);
 
@@ -164,6 +321,7 @@ int main(int argc, char *argv[])
 
   //criação da drawing area
   draw_area = gtk_drawing_area_new ();
+  g_signal_connect (G_OBJECT(draw_area), "draw", G_CALLBACK(cb_draw_event), myComponents);
   gtk_container_add (GTK_CONTAINER (frame), draw_area);
 
   //criação da frame de configuração
@@ -253,8 +411,14 @@ int main(int argc, char *argv[])
 
   g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
+  g_timeout_add (10, (GSourceFunc) time_handler, draw_area);
+
   gtk_widget_show_all(window);
   gtk_main ();
+
+  free(myComponents);
+  free(theBigBall);
+  free(vSmallBall);
 
   return 0;
 }
