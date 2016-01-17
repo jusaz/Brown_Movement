@@ -34,7 +34,8 @@
 const gchar  *winTitle    = "Movimento Browniano" ;
 glong   win_xlen    = 800 ;
 glong   win_ylen    = 600 ;
-gint    flag_sc     = 1   ;
+gint    flag_sc     = 0   ;
+gint    start       = 0   ;
 
 glong   xlen        = 450 ;
 glong   ylen        = 200 ;
@@ -55,12 +56,6 @@ typedef struct Ball_
   vector  velocidade;
 }Ball;
 
-typedef struct Components_
-{
-  Ball* bigBall;
-  Ball* smallBall;
-}Components;
-
 typedef struct _config_bg
 {
   guint8   bg_massa;
@@ -76,14 +71,28 @@ typedef struct _config_bp
   guint8 bp_num_bolas;
 }config_bp;
 
+typedef struct Components_
+{
+  Ball* bigBall;
+  Ball* smallBall;
+  config_bg bg;
+  config_bp bp;
+}Components;
+
 void actualizar(Ball* ptr)
 {
-  ptr->posicao.x += ptr->velocidade.x;
-  ptr->posicao.y += ptr->velocidade.y;
+  if(flag_sc)
+    {
+      ptr->posicao.x += ptr->velocidade.x;
+      ptr->posicao.y += ptr->velocidade.y;
+    }
 }
 
 void colisoes_janela(Ball* ptr, GtkAllocation *alloc1)
 {
+  if(!flag_sc)
+    return;
+
   if(ptr->posicao.x > alloc1->width - ptr->raio)
     {
       ptr->posicao.x = alloc1->width - ptr->raio;
@@ -108,6 +117,8 @@ void colisoes_janela(Ball* ptr, GtkAllocation *alloc1)
 
 void desenhar(Ball* ptr, cairo_t *cr)
 {
+  if(!start)
+    return;
   cairo_set_source_rgb (cr, 1., 0., 0.);
   cairo_set_line_width (cr, 4.0);
   cairo_arc (cr, ptr->posicao.x, ptr->posicao.y, ptr->raio, 0, 2. * M_PI);
@@ -124,6 +135,10 @@ void desenhar(Ball* ptr, cairo_t *cr)
 void colisoes(Components *ptr)
 {
   int i;
+
+  if(!flag_sc)
+    return;
+
   for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
     {
       //calcular a distancia entre as bolas (em x e y)
@@ -134,7 +149,7 @@ void colisoes(Components *ptr)
       //calcular a magnitude do vector que separa as bolas
       gdouble aux_mag = sqrt((vec_aux.x * vec_aux.x) + (vec_aux.y * vec_aux.y));
 
-      if (aux_mag <= (ptr->bigBall->raio + ptr->smallBall[i].raio))
+      if (aux_mag < (ptr->bigBall->raio + ptr->smallBall[i].raio))
         {
           //calcular o angulo do vector aux
           gdouble theta  = atan2(vec_aux.y, vec_aux.x);
@@ -212,12 +227,14 @@ cb_stop_continue (GtkButton  *widget ,
                   gpointer    data   )
 {
   if (flag_sc)
-    gtk_button_set_label (GTK_BUTTON(widget), "Parar");
-  else
     gtk_button_set_label (GTK_BUTTON(widget), "Continuar");
+  else
+    gtk_button_set_label (GTK_BUTTON(widget), "Parar");
 
   flag_sc = (flag_sc + 1) % 2;
 
+  if(!start)
+    start = 1;
   return FALSE;
 }
 
@@ -252,9 +269,8 @@ gboolean
 cb_chkb_bg_ver_sozinha (GtkWidget *widget ,
                         gpointer   data   )
 {
-  config_bg *bg = (config_bg*)data;
-  bg->bg_ver_sozinha = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  g_print("bg ver sozinha: %d\n", ((config_bg*)data)->bg_ver_sozinha ? 1 : 0);
+  Components *bg = (Components*)data;
+  bg->bg.bg_ver_sozinha = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   return FALSE;
 }
 
@@ -303,7 +319,6 @@ cb_draw_event (GtkWidget  *darea ,
                cairo_t    *cr    ,
                gpointer    data  )
 {
-
   gchar          texto[128] ;
   GtkAllocation  alloc1 ;
   int i;
@@ -325,11 +340,14 @@ cb_draw_event (GtkWidget  *darea ,
   // Small Balls
 
 
-  for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
+  if(!myComponents->bg.bg_ver_sozinha)
     {
-      actualizar(&myComponents->smallBall[i]);
-      desenhar(&myComponents->smallBall[i], cr);
-      colisoes_janela(&myComponents->smallBall[i], &alloc1);
+      for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
+        {
+          actualizar(&myComponents->smallBall[i]);
+          desenhar(&myComponents->smallBall[i], cr);
+          colisoes_janela(&myComponents->smallBall[i], &alloc1);
+        }
     }
 
 
@@ -345,7 +363,8 @@ cb_draw_event (GtkWidget  *darea ,
   /* verificar se existem colisões com as bordas da drawing area */
   /* verificar se existem colisões entre as bolas peuqenas com a grande*/
 
-  colisoes(myComponents);
+  if(!myComponents->bg.bg_ver_sozinha)
+    colisoes(myComponents);
 
   return FALSE;
 }
@@ -403,8 +422,10 @@ int main(int argc, char *argv[])
 
   Components* myComponents = (Components*)malloc(sizeof(Components));
 
-  myComponents->bigBall = theBigBall;
+  myComponents->bigBall   = theBigBall;
   myComponents->smallBall = vSmallBall;
+  myComponents->bg        = bg_param;
+  myComponents->bp        = bp_param;
 
   gtk_init (&argc, &argv);
 
@@ -475,7 +496,7 @@ int main(int argc, char *argv[])
   gtk_box_pack_start(GTK_BOX(button_box), spin_button, FALSE, TRUE, 3);
 
   check_box = gtk_check_button_new_with_label("Ver só bola grande");
-  g_signal_connect(G_OBJECT(check_box), "toggled", G_CALLBACK(cb_chkb_bg_ver_sozinha), &bg_param);
+  g_signal_connect(G_OBJECT(check_box), "toggled", G_CALLBACK(cb_chkb_bg_ver_sozinha), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), check_box, FALSE, TRUE, 6);
 
   check_box = gtk_check_button_new_with_label("Ver Velocidade");
