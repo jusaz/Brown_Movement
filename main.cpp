@@ -20,8 +20,8 @@
 #define BALL1_X  500
 #define BALL1_Y  30
 
-#define DFLT_NR_SMALL_BALLS   5
-#define MAX_NR_SMALL_BALLS    5
+#define DFLT_NR_SMALL_BALLS   10
+#define MAX_NR_SMALL_BALLS    10
 #define DFLT_MASS_SMALL_BALLS 2.
 
 #include <stdlib.h>
@@ -41,14 +41,18 @@ glong   ylen        = 200 ;
 gdouble dt          = 1.  ;
 gdouble dt_max      = 10. ;
 
+typedef struct _vector
+{
+  gdouble x;
+  gdouble y;
+}vector;
+
 typedef struct Ball_
 {
-  gdouble diam;
-  gdouble xPos;
-  gdouble yPos;
-  gdouble s2x;
-  gdouble s2y;
+  gdouble raio;
   gdouble massa;
+  vector  posicao;
+  vector  velocidade;
 }Ball;
 
 typedef struct Components_
@@ -71,6 +75,137 @@ typedef struct _config_bp
   guint8 bp_velocidade;
   guint8 bp_num_bolas;
 }config_bp;
+
+void actualizar(Ball* ptr)
+{
+  ptr->posicao.x += ptr->velocidade.x;
+  ptr->posicao.y += ptr->velocidade.y;
+}
+
+void colisoes_janela(Ball* ptr, GtkAllocation *alloc1)
+{
+  if(ptr->posicao.x > alloc1->width - ptr->raio)
+    {
+      ptr->posicao.x = alloc1->width - ptr->raio;
+      ptr->velocidade.x *= -1;
+    }
+  else if(ptr->posicao.x < ptr->raio)
+    {
+      ptr->posicao.x = ptr->raio;
+      ptr->velocidade.x *= -1;
+    }
+  else if(ptr->posicao.y > alloc1->height - ptr->raio)
+    {
+      ptr->posicao.y = alloc1->height - ptr->raio;
+      ptr->velocidade.y *= -1;
+    }
+  else if (ptr->posicao.y < ptr->raio)
+    {
+      ptr->posicao.y = ptr->raio;
+      ptr->velocidade.y *= -1;
+    }
+}
+
+void desenhar(Ball* ptr, cairo_t *cr)
+{
+  cairo_set_source_rgb (cr, 1., 0., 0.);
+  cairo_set_line_width (cr, 4.0);
+  cairo_arc (cr, ptr->posicao.x, ptr->posicao.y, ptr->raio, 0, 2. * M_PI);
+  cairo_stroke_preserve (cr);
+
+  // Nota: ver o que acontece se se comentar a linha anterior e descomentar a seguinte
+  //cairo_stroke (cr);
+
+  cairo_set_source_rgb (cr, 0, 0, 1);
+  cairo_fill (cr);
+  cairo_stroke(cr);
+}
+
+void colisoes(Components *ptr)
+{
+  int i;
+  for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
+    {
+      //calcular a distancia entre as bolas (em x e y)
+      vector vec_aux;
+      vec_aux.x = ptr->bigBall->posicao.x - ptr->smallBall[i].posicao.x;
+      vec_aux.y = ptr->bigBall->posicao.y - ptr->smallBall[i].posicao.y;
+
+      //calcular a magnitude do vector que separa as bolas
+      gdouble aux_mag = sqrt((vec_aux.x * vec_aux.x) + (vec_aux.y * vec_aux.y));
+
+      if (aux_mag <= (ptr->bigBall->raio + ptr->smallBall[i].raio))
+        {
+          //calcular o angulo do vector aux
+          gdouble theta  = atan2(vec_aux.y, vec_aux.x);
+
+          //precalcular os valores de seno e coseno
+          gdouble seno   = sin(theta);
+          gdouble coseno = cos(theta);
+
+          /*Na situação de colisão as posições das bolas são relativas
+            uma à outra. Por isso podemos o vector entre elas (vec_aux)
+            como ponto de referência para calcular as rotações.
+            Assim criamos um vector de referência (vec_ref) com coordenadas
+            x e y inicializadas a 0 assumindo que o vector vec_temp irá
+            rodar em torno de vec_ref
+          */
+          vector vec_ref = {.x = 0, .y = 0};
+          vector vec_temp;
+          vec_temp.x  = coseno * vec_aux.x + seno * vec_aux.y;
+          vec_temp.y  = coseno * vec_aux.y - seno * vec_aux.x;
+
+          // rotação das velocidades
+          vector vec_vel_temp[2];
+          vec_vel_temp[0].x  = coseno * ptr->smallBall[i].velocidade.x + seno * ptr->smallBall[i].velocidade.y;
+          vec_vel_temp[0].y  = coseno * ptr->smallBall[i].velocidade.y - seno * ptr->smallBall[i].velocidade.x;
+          vec_vel_temp[1].x  = coseno * ptr->bigBall->velocidade.x + seno * ptr->bigBall->velocidade.y;
+          vec_vel_temp[1].y  = coseno * ptr->bigBall->velocidade.y - seno * ptr->bigBall->velocidade.x;
+
+          /* Now that velocities are rotated, you can use 1D
+           conservation of momentum equations to calculate
+           the final velocity along the x-axis. */
+          vector vec_final[2];
+
+          /*Lei da Conservação do momento*/
+          vec_final[0].x = ((ptr->smallBall[i].massa - ptr->bigBall->massa) * vec_vel_temp[0].x + 2 * ptr->bigBall->massa * vec_vel_temp[1].x) / (ptr->smallBall[i].massa + ptr->bigBall->massa);
+          vec_final[0].y = vec_vel_temp[0].y;
+
+          // final rotated velocity for b[0]
+          vec_final[1].x = ((ptr->bigBall->massa - ptr->smallBall[i].massa) * vec_vel_temp[1].x + 2 * ptr->smallBall[i].massa * vec_vel_temp[0].x) / (ptr->smallBall[i].massa + ptr->bigBall->massa);
+          vec_final[1].y = vec_vel_temp[1].y;
+
+          // hack to avoid clumping
+          vec_ref.x  += vec_final[0].x;
+          vec_temp.x += vec_final[1].x;
+
+          /* Rotate ball positions and velocities back
+           Reverse signs in trig expressions to rotate
+           in the opposite direction */
+          // rotate balls
+
+          vector b_final[2];
+          b_final[0].x = coseno * vec_ref.x - seno * vec_ref.y;
+          b_final[0].y = coseno * vec_ref.y + seno * vec_ref.x;
+          b_final[1].x = coseno * vec_temp.x - seno * vec_temp.y;
+          b_final[1].y = coseno * vec_temp.y + seno * vec_temp.x;
+
+          // update balls to screen position
+          ptr->bigBall->posicao.x = ptr->smallBall[i].posicao.x + b_final[1].x;
+          ptr->bigBall->posicao.y = ptr->smallBall[i].posicao.y + b_final[1].y;
+
+          ptr->smallBall[i].posicao.x += b_final[0].x;
+          ptr->smallBall[i].posicao.y += b_final[0].y;
+
+
+          // update velocities
+          ptr->smallBall[i].velocidade.x = coseno * vec_final[0].x - seno * vec_final[0].y;
+          ptr->smallBall[i].velocidade.y = coseno * vec_final[0].y + seno * vec_final[0].x;
+          ptr->bigBall->velocidade.x = coseno * vec_final[1].x - seno * vec_final[1].y;
+          ptr->bigBall->velocidade.y = coseno * vec_final[1].y + seno * vec_final[1].x;
+        }
+    }
+}
 
 gboolean
 cb_stop_continue (GtkButton  *widget ,
@@ -163,13 +298,6 @@ cb_sb_bp_velocidade (GtkWidget *widget ,
   return FALSE;
 }
 
-void actualizar(const Components* ptr)
-{
-
-}
-
-
-
 gboolean
 cb_draw_event (GtkWidget  *darea ,
                cairo_t    *cr    ,
@@ -184,6 +312,7 @@ cb_draw_event (GtkWidget  *darea ,
 
   gtk_widget_get_allocation (darea, &alloc1);
 
+  /*
   cairo_move_to (cr, 20, 20);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size (cr, 18);
@@ -191,70 +320,32 @@ cb_draw_event (GtkWidget  *darea ,
   sprintf (texto, "Exemplo de funcionamento de GTK+ Cairo            Velocidade: %.0lf", dt);
   cairo_show_text (cr, texto);
   cairo_stroke (cr);
+  */
 
   // Small Balls
+
+
   for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
     {
-      cairo_set_source_rgb (cr, 1., 0., 0.);
-      cairo_set_line_width (cr, 4.0);
-      cairo_arc (cr, myComponents->smallBall[i].xPos, myComponents->smallBall[i].yPos,
-                 myComponents->smallBall[i].diam, 0, 2. * M_PI);
-      cairo_stroke_preserve (cr);
-
-      // Nota: ver o que acontece se se comentar a linha anterior e descomentar a seguinte
-      //cairo_stroke (cr);
-
-      cairo_set_source_rgb (cr, 0, 0, 1);
-      cairo_fill (cr);
-
-      if ((myComponents->smallBall[i].xPos < myComponents->smallBall[i].diam + 10) ||
-          ((myComponents->smallBall[i].xPos + myComponents->smallBall[i].diam + 10) > alloc1.width))
-        myComponents->smallBall[i].s2x = - myComponents->smallBall[i].s2x;
-      myComponents->smallBall[i].xPos = myComponents->smallBall[i].xPos + myComponents->smallBall[i].s2x * dt;
-
-      if ((myComponents->smallBall[i].yPos < myComponents->smallBall[i].diam + 10) ||
-          ((myComponents->smallBall[i].yPos + myComponents->smallBall[i].diam + 10) > alloc1.height))
-        myComponents->smallBall[i].s2y = - myComponents->smallBall[i].s2y;
-      myComponents->smallBall[i].yPos = myComponents->smallBall[i].yPos + myComponents->smallBall[i].s2y * dt;
-
-      cairo_stroke(cr);
+      actualizar(&myComponents->smallBall[i]);
+      desenhar(&myComponents->smallBall[i], cr);
+      colisoes_janela(&myComponents->smallBall[i], &alloc1);
     }
 
+
+
   //Big Ball
-  cairo_set_source_rgb (cr, 1., 0., 0.);
-  cairo_set_line_width (cr, 4.0);
-  cairo_arc (cr, myComponents->bigBall->xPos, myComponents->bigBall->yPos,
-             myComponents->bigBall->diam, 0, 2. * M_PI);
-  cairo_stroke_preserve (cr);
-
-  // Nota: ver o que acontece se se comentar a linha anterior e descomentar a seguinte
-  //cairo_stroke (cr);
-
-  cairo_set_source_rgb (cr, 0, 0, 1);
-  cairo_fill (cr);
-
-  if (
-      (myComponents->bigBall->xPos < myComponents->bigBall->diam) ||
-      ((myComponents->bigBall->xPos + myComponents->bigBall->diam) > alloc1.width)
-     )
-    myComponents->bigBall->s2x = - myComponents->bigBall->s2x;
-
-  myComponents->bigBall->xPos = myComponents->bigBall->xPos + myComponents->bigBall->s2x * dt;
-
-  if ((myComponents->bigBall->yPos < myComponents->bigBall->diam) ||
-      ((myComponents->bigBall->yPos + myComponents->bigBall->diam) > alloc1.height))
-    myComponents->bigBall->s2y = - myComponents->bigBall->s2y;
-  myComponents->bigBall->yPos = myComponents->bigBall->yPos + myComponents->bigBall->s2y * dt;
-
-  cairo_stroke(cr);
-
-  //for() */
+  actualizar(myComponents->bigBall);
+  desenhar(myComponents->bigBall, cr);
+  colisoes_janela(myComponents->bigBall, &alloc1);
 
   /* Para cada bola vamos :*/
   /* Fazer o update das posições */
   /* fazer o rendering na drawing area */
   /* verificar se existem colisões com as bordas da drawing area */
   /* verificar se existem colisões entre as bolas peuqenas com a grande*/
+
+  colisoes(myComponents);
 
   return FALSE;
 }
@@ -288,24 +379,27 @@ int main(int argc, char *argv[])
 
   srand ((unsigned) time (NULL));
 
+
   for(i = 0; i < DFLT_NR_SMALL_BALLS; i++)
     {
-      vSmallBall[i].diam  = radius;
-      vSmallBall[i].xPos  = rand () % win_xlen + 1;
-      vSmallBall[i].yPos  = rand () % win_ylen + 1;
-      vSmallBall[i].s2x   =   -1.;
-      vSmallBall[i].s2y   =    1.;
-      vSmallBall[i].massa =  DFLT_MASS_SMALL_BALLS;
+      vSmallBall[i].raio         = radius;
+      vSmallBall[i].posicao.x    = rand () % win_xlen + 1;
+      vSmallBall[i].posicao.y    = rand () % win_ylen + 1;
+      vSmallBall[i].velocidade.x =    3.;
+      vSmallBall[i].velocidade.y =    3.;
+      vSmallBall[i].massa         =  DFLT_MASS_SMALL_BALLS;
     }
 
   //create Big Ball
-  Ball* theBigBall = (Ball*)malloc(sizeof(Ball));
-  theBigBall->diam  = 2 * radius;
-  theBigBall->xPos  = rand () % win_xlen + 1;
-  theBigBall->yPos  = rand () % win_ylen + 1;
-  theBigBall->s2x   =   1.;
-  theBigBall->s2y   =   1.;
-  theBigBall->massa =  3 * DFLT_MASS_SMALL_BALLS;
+  Ball* theBigBall            = (Ball*)malloc(sizeof(Ball));
+  theBigBall->raio            = 2*radius;
+  //theBigBall->posicao.x      = rand () % win_xlen + 1;
+  //theBigBall->posicao.y      = rand () % win_ylen + 1;
+  theBigBall->posicao.x      = 0.;
+  theBigBall->posicao.y      = 0.;
+  theBigBall->velocidade.x   =   3.;
+  theBigBall->velocidade.y   =   3.;
+  theBigBall->massa           =  3 * DFLT_MASS_SMALL_BALLS;
 
   Components* myComponents = (Components*)malloc(sizeof(Components));
 
