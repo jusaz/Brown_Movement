@@ -153,7 +153,7 @@ void colisoes(Components *ptr)
       if (aux_mag <= (ptr->bigBall->raio + ptr->smallBall[i].raio))
         {
           //calcular o angulo do vector aux
-          gdouble theta  = atan2(vec_aux.y, vec_aux.x);
+          gdouble theta  = atan2(vec_aux.y, vec_aux.x) * 180 / M_PI;
 
           //precalcular os valores de seno e coseno
           gdouble seno   = sin(theta);
@@ -295,6 +295,8 @@ gboolean
 cb_restart (GtkWidget *widget ,
             gpointer   data   )
 {
+  if(!flag_sc)
+    flag_sc = 1;
   Components *comp = (Components*)data;
   cb_stop_continue(comp->sc_button, data);
   start = 0;
@@ -430,8 +432,6 @@ int main(int argc, char *argv[])
   GtkWidget *window, *draw_area, *frame, *main_box, *button_box, *button_reiniciar, *button_start;
 
   GtkWidget *label, *spin_button, *check_box;
-
-  int i;
 
   config_bg bg_param = {(guint8)BG_MASSA_DFT, (guint8)BG_VEL_DFT, FALSE, FALSE};
   config_bp bp_param = {(guint8)BP_MASSA_DFT, (guint8)BP_VEL_DFT, (guint8)BP_NUM_BOLAS_DFT};
