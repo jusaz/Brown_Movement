@@ -153,7 +153,7 @@ void colisoes(Components *ptr)
       if (aux_mag <= (ptr->bigBall->raio + ptr->smallBall[i].raio))
         {
           //calcular o angulo do vector aux
-          gdouble theta  = atan2(vec_aux.y, vec_aux.x) * 180 / M_PI;
+          gdouble theta  = atan2(vec_aux.y, vec_aux.x);
 
           //precalcular os valores de seno e coseno
           gdouble seno   = sin(theta);
