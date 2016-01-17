@@ -20,8 +20,8 @@
 #define BALL1_X  500
 #define BALL1_Y  30
 
-#define DFLT_NR_SMALL_BALLS   10
-#define MAX_NR_SMALL_BALLS    10
+#define DFLT_NR_SMALL_BALLS   30
+#define MAX_NR_SMALL_BALLS    30
 #define DFLT_MASS_SMALL_BALLS 2.
 
 #include <stdlib.h>
@@ -79,6 +79,11 @@ typedef struct Components_
   config_bp bp;
 }Components;
 
+gdouble modulo(vector *ptr)
+{
+  return sqrt(ptr->x * ptr->x + ptr->y * ptr->y);
+}
+
 void actualizar(Ball* ptr)
 {
   if(flag_sc)
@@ -119,8 +124,9 @@ void desenhar(Ball* ptr, cairo_t *cr)
 {
   if(!start)
     return;
-  cairo_set_source_rgb (cr, 1., 0., 0.);
-  cairo_set_line_width (cr, 4.0);
+
+  //cairo_set_source_rgb (cr, 1., 0., 0.);
+  //cairo_set_line_width (cr, 4.0);
   cairo_arc (cr, ptr->posicao.x, ptr->posicao.y, ptr->raio, 0, 2. * M_PI);
   cairo_stroke_preserve (cr);
 
@@ -147,7 +153,7 @@ void colisoes(Components *ptr)
       vec_aux.y = ptr->bigBall->posicao.y - ptr->smallBall[i].posicao.y;
 
       //calcular a magnitude do vector que separa as bolas
-      gdouble aux_mag = sqrt((vec_aux.x * vec_aux.x) + (vec_aux.y * vec_aux.y));
+      gdouble aux_mag = modulo(&vec_aux);
 
       if (aux_mag < (ptr->bigBall->raio + ptr->smallBall[i].raio))
         {
@@ -193,6 +199,8 @@ void colisoes(Components *ptr)
           // hack to avoid clumping
           vec_ref.x  += vec_final[0].x;
           vec_temp.x += vec_final[1].x;
+          vec_ref.y  += vec_final[0].y;
+          vec_temp.y += vec_final[1].y;
 
           /* Rotate ball positions and velocities back
            Reverse signs in trig expressions to rotate
@@ -220,6 +228,19 @@ void colisoes(Components *ptr)
           ptr->bigBall->velocidade.y = coseno * vec_final[1].y + seno * vec_final[1].x;
         }
     }
+}
+
+void ver_velocidade(vector vel, cairo_t *cr)
+{
+  gchar   texto[128] ;
+  gdouble dt = modulo(&vel);
+  cairo_move_to (cr, 20, 20);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size (cr, 18);
+  cairo_set_source_rgb (cr, 0., 0., 0.);
+  sprintf (texto, "Velocidade: %.1lf", dt);
+  cairo_show_text (cr, texto);
+  cairo_stroke (cr);
 }
 
 gboolean
@@ -269,8 +290,8 @@ gboolean
 cb_chkb_bg_ver_sozinha (GtkWidget *widget ,
                         gpointer   data   )
 {
-  Components *bg = (Components*)data;
-  bg->bg.bg_ver_sozinha = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  Components *comp = (Components*)data;
+  comp->bg.bg_ver_sozinha = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   return FALSE;
 }
 
@@ -278,8 +299,8 @@ gboolean
 cb_chkb_bg_ver_velocidade (GtkWidget *widget ,
                            gpointer   data   )
 {
-  config_bg *bg = (config_bg*)data;
-  bg->bg_ver_velocidade = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  Components *comp = (Components*)data;
+  comp->bg.bg_ver_velocidade = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   g_print("bg ver velocidade: %d\n", ((config_bg*)data)->bg_ver_velocidade ? 1 : 0);
   return FALSE;
 }
@@ -288,8 +309,8 @@ gboolean
 cb_sb_bp_massa (GtkWidget *widget ,
                 gpointer   data   )
 {
-  config_bp *bp = (config_bp*)data;
-  bp->bp_massa = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  Components *comp = (Components*)data;
+  comp->bp.bp_massa = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp massa: %d\n", ((config_bp*)data)->bp_massa);
   return FALSE;
 }
@@ -298,8 +319,8 @@ gboolean
 cb_sb_bp_num_bolas (GtkWidget *widget ,
                     gpointer   data   )
 {
-  config_bp *bp = (config_bp*)data;
-  bp->bp_num_bolas = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  Components *comp = (Components*)data;
+  comp->bp.bp_num_bolas = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp num bolas: %d\n", ((config_bp*)data)->bp_num_bolas);
   return FALSE;
 }
@@ -308,8 +329,8 @@ gboolean
 cb_sb_bp_velocidade (GtkWidget *widget ,
                      gpointer   data   )
 {
-  config_bp *bp = (config_bp*)data;
-  bp->bp_velocidade = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  Components *comp = (Components*)data;
+  comp->bp.bp_velocidade = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
   g_print("bp velocidade: %d\n", ((config_bp*)data)->bp_velocidade);
   return FALSE;
 }
@@ -319,23 +340,12 @@ cb_draw_event (GtkWidget  *darea ,
                cairo_t    *cr    ,
                gpointer    data  )
 {
-  gchar          texto[128] ;
   GtkAllocation  alloc1 ;
   int i;
 
   Components *myComponents = (Components*)data;
 
   gtk_widget_get_allocation (darea, &alloc1);
-
-  /*
-  cairo_move_to (cr, 20, 20);
-  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size (cr, 18);
-  cairo_set_source_rgb (cr, 0., 0., 1.);
-  sprintf (texto, "Exemplo de funcionamento de GTK+ Cairo            Velocidade: %.0lf", dt);
-  cairo_show_text (cr, texto);
-  cairo_stroke (cr);
-  */
 
   // Small Balls
 
@@ -365,6 +375,9 @@ cb_draw_event (GtkWidget  *darea ,
 
   if(!myComponents->bg.bg_ver_sozinha)
     colisoes(myComponents);
+
+  if(myComponents->bg.bg_ver_velocidade)
+    ver_velocidade(myComponents->bigBall->velocidade, cr);
 
   return FALSE;
 }
@@ -404,21 +417,21 @@ int main(int argc, char *argv[])
       vSmallBall[i].raio         = radius;
       vSmallBall[i].posicao.x    = rand () % win_xlen + 1;
       vSmallBall[i].posicao.y    = rand () % win_ylen + 1;
-      vSmallBall[i].velocidade.x =    3.;
-      vSmallBall[i].velocidade.y =    3.;
-      vSmallBall[i].massa         =  DFLT_MASS_SMALL_BALLS;
+      vSmallBall[i].velocidade.x = bp_param.bp_velocidade *  1.0;
+      vSmallBall[i].velocidade.y = bp_param.bp_velocidade * -1.0;
+      vSmallBall[i].massa        =  DFLT_MASS_SMALL_BALLS;
     }
 
   //create Big Ball
-  Ball* theBigBall            = (Ball*)malloc(sizeof(Ball));
-  theBigBall->raio            = 2*radius;
+  Ball* theBigBall           = (Ball*)malloc(sizeof(Ball));
+  theBigBall->raio           = 2*radius;
   //theBigBall->posicao.x      = rand () % win_xlen + 1;
   //theBigBall->posicao.y      = rand () % win_ylen + 1;
-  theBigBall->posicao.x      = 0.;
-  theBigBall->posicao.y      = 0.;
-  theBigBall->velocidade.x   =   3.;
-  theBigBall->velocidade.y   =   3.;
-  theBigBall->massa           =  3 * DFLT_MASS_SMALL_BALLS;
+  theBigBall->posicao.x      =  0.;
+  theBigBall->posicao.y      =  0.;
+  theBigBall->velocidade.x   =  bg_param.bg_velocidade *  1.0;
+  theBigBall->velocidade.y   =  bg_param.bg_velocidade * -1.0;
+  theBigBall->massa          =  bg_param.bg_massa;
 
   Components* myComponents = (Components*)malloc(sizeof(Components));
 
@@ -483,16 +496,18 @@ int main(int argc, char *argv[])
   gtk_box_pack_start(GTK_BOX(button_box), label, FALSE, TRUE, 3);
 
   spin_button = gtk_spin_button_new_with_range(1, 100, 1);
-  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bg_massa), &bg_param);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_button), bg_param.bg_massa);
+  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bg_massa), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), spin_button, FALSE, TRUE, 0);
 
-  label = gtk_label_new("Velocidade:");
+  label = gtk_label_new("Velocidade Inicial:");
   gtk_widget_set_hexpand (label, FALSE);
   gtk_widget_set_halign (label, GTK_ALIGN_START);
   gtk_box_pack_start(GTK_BOX(button_box), label, FALSE, TRUE, 3);
 
   spin_button = gtk_spin_button_new_with_range(1, 10, 1);
-  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bg_velocidade), &bg_param);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_button), modulo(&myComponents->bigBall->velocidade));
+  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bg_velocidade), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), spin_button, FALSE, TRUE, 3);
 
   check_box = gtk_check_button_new_with_label("Ver só bola grande");
@@ -500,7 +515,7 @@ int main(int argc, char *argv[])
   gtk_box_pack_start(GTK_BOX(button_box), check_box, FALSE, TRUE, 6);
 
   check_box = gtk_check_button_new_with_label("Ver Velocidade");
-  g_signal_connect(G_OBJECT(check_box), "toggled", G_CALLBACK(cb_chkb_bg_ver_velocidade), &bg_param);
+  g_signal_connect(G_OBJECT(check_box), "toggled", G_CALLBACK(cb_chkb_bg_ver_velocidade), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), check_box, FALSE, TRUE, 6);
 
   label = gtk_label_new("Bolas Pequenas");
@@ -514,7 +529,8 @@ int main(int argc, char *argv[])
   gtk_box_pack_start(GTK_BOX(button_box), label, FALSE, TRUE, 3);
 
   spin_button = gtk_spin_button_new_with_range(1, 100, 1);
-  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bp_massa), &bp_param);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_button), myComponents->smallBall->massa);
+  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bp_massa), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), spin_button, FALSE, TRUE, 0);
 
   label = gtk_label_new("Nº Bolas:");
@@ -523,7 +539,8 @@ int main(int argc, char *argv[])
   gtk_box_pack_start(GTK_BOX(button_box), label, FALSE, TRUE, 3);
 
   spin_button = gtk_spin_button_new_with_range(1, 30, 1);
-  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bp_num_bolas), &bp_param);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_button), myComponents->bp.bp_num_bolas);
+  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bp_num_bolas), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), spin_button, FALSE, TRUE, 0);
 
   label = gtk_label_new("Velocidade Inicial:");
@@ -532,7 +549,8 @@ int main(int argc, char *argv[])
   gtk_box_pack_start(GTK_BOX(button_box), label, FALSE, TRUE, 3);
 
   spin_button = gtk_spin_button_new_with_range(1, 10, 1);
-  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bp_velocidade), &bp_param);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(spin_button), modulo(&myComponents->smallBall->velocidade));
+  g_signal_connect(G_OBJECT(spin_button), "value-changed", G_CALLBACK(cb_sb_bp_velocidade), myComponents);
   gtk_box_pack_start(GTK_BOX(button_box), spin_button, FALSE, TRUE, 0);
 
   g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
